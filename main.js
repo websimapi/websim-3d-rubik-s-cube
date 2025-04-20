@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { TWEEN } from 'three/addons/libs/tween.module.min.js';
+import * as TWEEN from 'tween';
 
 // Global variables
 let scene, camera, renderer, controls;
@@ -444,4 +444,3 @@ function animate() {
     controls.update();
     renderer.render(scene, camera);
 }
-
