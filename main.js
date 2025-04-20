@@ -60,8 +60,13 @@ function init() {
 
     // Add event listeners
     window.addEventListener('resize', onWindowResize);
-    document.getElementById('shuffle').addEventListener('click', shuffleCube);
-    document.getElementById('solve').addEventListener('click', resetCube);
+    
+    // Make sure these elements exist before adding event listeners
+    const shuffleButton = document.getElementById('shuffle');
+    const solveButton = document.getElementById('solve');
+    
+    if (shuffleButton) shuffleButton.addEventListener('click', shuffleCube);
+    if (solveButton) solveButton.addEventListener('click', resetCube);
     
     // Add raycaster for cube interaction
     setupRaycaster();
@@ -149,7 +154,7 @@ function setupRaycaster() {
     let selectedNormal = null;
     
     function onMouseDown(event) {
-        if (rotationInProgress) return;
+        if (rotationInProgress || !event) return;
         
         // Calculate mouse position in normalized device coordinates
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -163,21 +168,23 @@ function setupRaycaster() {
         // Calculate objects intersecting the picking ray
         const intersects = raycaster.intersectObjects(pieces);
         
-        if (intersects.length > 0) {
+        if (intersects.length > 0 && intersects[0].face) {
             controls.enabled = false;
             isDragging = true;
             selectedPiece = intersects[0].object;
             
             // Get the face normal in world space
-            const normalMatrix = new THREE.Matrix3().getNormalMatrix(selectedPiece.matrixWorld);
-            selectedNormal = intersects[0].face.normal.clone()
-                .applyMatrix3(normalMatrix)
-                .normalize();
+            if (selectedPiece && selectedPiece.matrixWorld) {
+                const normalMatrix = new THREE.Matrix3().getNormalMatrix(selectedPiece.matrixWorld);
+                selectedNormal = intersects[0].face.normal.clone()
+                    .applyMatrix3(normalMatrix)
+                    .normalize();
+            }
         }
     }
     
     function onMouseMove(event) {
-        if (!isDragging || rotationInProgress) return;
+        if (!isDragging || rotationInProgress || !event) return;
         
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -203,6 +210,8 @@ function setupRaycaster() {
     
     // Determine drag direction based on normal and mouse movement
     function getDragDirection(dragVector, normal) {
+        if (!normal) return null;
+        
         // Convert normal to camera space
         const normalInCamera = normal.clone().project(camera);
         
@@ -237,28 +246,35 @@ function setupRaycaster() {
         }
     }
     
-    document.addEventListener('mousedown', onMouseDown, false);
-    document.addEventListener('mousemove', onMouseMove, false);
-    document.addEventListener('mouseup', onMouseUp, false);
-    
-    // Touch support
-    document.addEventListener('touchstart', (event) => {
-        event.preventDefault();
-        onMouseDown({
-            clientX: event.touches[0].clientX,
-            clientY: event.touches[0].clientY
-        });
-    }, false);
-    
-    document.addEventListener('touchmove', (event) => {
-        event.preventDefault();
-        onMouseMove({
-            clientX: event.touches[0].clientX,
-            clientY: event.touches[0].clientY
-        });
-    }, false);
-    
-    document.addEventListener('touchend', onMouseUp, false);
+    // Make sure to only add event listeners once the DOM is fully ready
+    if (document) {
+        document.addEventListener('mousedown', onMouseDown, false);
+        document.addEventListener('mousemove', onMouseMove, false);
+        document.addEventListener('mouseup', onMouseUp, false);
+        
+        // Touch support
+        document.addEventListener('touchstart', (event) => {
+            if (event && event.touches && event.touches[0]) {
+                event.preventDefault();
+                onMouseDown({
+                    clientX: event.touches[0].clientX,
+                    clientY: event.touches[0].clientY
+                });
+            }
+        }, false);
+        
+        document.addEventListener('touchmove', (event) => {
+            if (event && event.touches && event.touches[0]) {
+                event.preventDefault();
+                onMouseMove({
+                    clientX: event.touches[0].clientX,
+                    clientY: event.touches[0].clientY
+                });
+            }
+        }, false);
+        
+        document.addEventListener('touchend', onMouseUp, false);
+    }
 }
 
 function rotateLayer(piece, normal, direction) {
